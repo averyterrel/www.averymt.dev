@@ -1,0 +1,12 @@
+vim: set colorcolumn=81:hi ColorColumn ctermbg=224
+Welcome!
+You may have noticed that this site looks similar to #/kisslinux.github.io,
+and that is by design. I took a fair amount of inspiration from the layout of
+it, noticing how easy it was to write based on the strict formatting rules.
+With some custom boilerplate in $/template_html and vim highlighting I can just
+sit down and write, without having to worry about formatting. I'll probably use
+some of the <code>sed</code> patterns mentioned in Dylan's blog post:
+#/kisscommunity.org/archive/blog/20191004a/. If you'd like to know how
+I created and use the services on this server, check out $/setup.
+
+Written 1/1/2025 22:23 UTC-6

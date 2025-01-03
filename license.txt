@@ -1,0 +1,6 @@
+vim: set colorcolumn=81:hi ColorColumn ctermbg=224
+License
+Unless otherwise mentioned, all content hosted on this website is under the
+following copyright:
+	Copyright (c) 2025 Avery Terrel. Creative Commons CC0 V1.0 Universal.
+A copy of the license text is available at $/cc0_license

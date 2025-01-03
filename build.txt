@@ -1,0 +1,57 @@
+#!/bin/ksh
+#Site build script
+#vim: set colorcolumn=81 ft=sh:hi ColorColumn ctermbg=224
+set -e
+txt2html() {
+	# cut off the modeline and title
+	tail -n +3 |
+
+	# convert plaintext links into html
+	sed "s|\([^\"\'\>=]\)\(http[s]\{0,1\}://[^ ]*\)\([,.]\)|\1<a href=\2>\2</a>\3|g" |
+	sed "s|\([^\"\'\>=]\)\(http[s]\{0,1\}://[^ ]*\)|\1<a href=\2>\2</a>|g" |
+	sed 's|\(http[s]\{0,1\}://[^ ]*\)\([,.]\)|<a href=\1>\1</a>\2|g' |
+	sed 's|\(http[s]\{0,1\}://[^ ]*\)|<a href=\1>\1</a>|g' |
+	# convert `$/url` to html links relative to root domain
+	sed 's|\(\$/\)\([^ \)]*\)\([,.]\)|<a href=/\2>\1\2</a>\3|g' |
+	sed 's|\(\$/\)\([^ \)<]*\)|<a href=/\2>\1\2</a>|g' |
+	# convert `#/url` to html links
+	sed 's|\(#/\)\([^ )]*\)\([,.)]\)|<a href=\2>\1\2</a>\3|g' |
+	sed 's|\(#/\)\([^ )<]*\)|<a href=\2>\1\2</a>|g' |
+
+	# convert `-[0-9]` into IDs
+	sed 's|^\([ -]*\)\[\([0-9\.]*\)\]|\1<span id=\2>[\2]</span>|g' |
+	# convert `[0-9]` into references to IDs
+	sed 's|\([^\"#]\)\[\([0-9\.]*\)\]|\1[<a href=#\2>\2</a>]|g' |
+
+	# set content
+	sed '/%%CONTENT%%/r /dev/stdin' template_html |
+	sed '/%%CONTENT%%/d' |
+	# set title
+	sed "s|%%TITLE%%|${1:-Index}|"
+}
+{
+	# process arguments if available, else all *.txt
+	[ $# -eq 0 ] && find . -name '*.txt'
+	while [ ! $# -eq 0 ]; do
+		case "$1" in
+			sitemap*)
+				shift
+				break
+				;;
+		esac
+		printf '%s\n' "$1"
+		printf '%s\n' "$1" >&2
+		shift
+	done
+} | while read -r PAGE; do
+	title=$(sed '2p;d' -- "$PAGE")
+	printf 'txt2html %s\n' "$title"
+	txt2html "$title" < "$PAGE" > "${PAGE%%.txt}.html"
+done
+printf 'txt2html Sitemap\n'
+find . -name '*.html' | cut -d/ -f2- | grep -v ^sitemap.html\$ | while read -r PAGE; do
+	printf '<a href=/%s>$/%s</a>\n' "$PAGE" "$(sed '2p;d' -- "${PAGE%%.html}.txt")"
+done |
+	sed '/%%CONTENT%%/r /dev/stdin' template_html |
+	sed '/%%CONTENT%%/d' |
+	sed 's|%%TITLE%%|Sitemap|' > sitemap.html
