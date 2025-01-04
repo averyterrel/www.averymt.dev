@@ -1,4 +1,4 @@
-vim: set colorcolumn=81:hi ColorColumn ctermbg=224
+vim: set spell spelllang=en_us colorcolumn=81:hi ColorColumn ctermbg=224
 Welcome!
 You may have noticed that this site looks similar to #/kisslinux.github.io,
 and that is by design. I took a fair amount of inspiration from the layout of

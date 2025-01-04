@@ -1,7 +1,6 @@
 #!/bin/ksh
 #Site build script
 #vim: set colorcolumn=81 ft=sh:hi ColorColumn ctermbg=224
-set -e
 txt2html() {
 	# cut off the modeline and title
 	tail -n +3 |
@@ -13,10 +12,10 @@ txt2html() {
 	sed 's|\(http[s]\{0,1\}://[^ ]*\)|<a href=\1>\1</a>|g' |
 	# convert `$/url` to html links relative to root domain
 	sed 's|\(\$/\)\([^ \)]*\)\([,.]\)|<a href=/\2>\1\2</a>\3|g' |
-	sed 's|\(\$/\)\([^ \)<]*\)|<a href=/\2>\1\2</a>|g' |
+	sed 's|\(\$/\)\([^ \)<>]*\)|<a href=/\2>\1\2</a>|g' |
 	# convert `#/url` to html links
 	sed 's|\(#/\)\([^ )]*\)\([,.)]\)|<a href=\2>\1\2</a>\3|g' |
-	sed 's|\(#/\)\([^ )<]*\)|<a href=\2>\1\2</a>|g' |
+	sed 's|\(#/\)\([^ )<>]*\)|<a href=\2>\1\2</a>|g' |
 
 	# convert `-[0-9]` into IDs
 	sed 's|^\([ -]*\)\[\([0-9\.]*\)\]|\1<span id=\2>[\2]</span>|g' |
@@ -40,7 +39,6 @@ txt2html() {
 				;;
 		esac
 		printf '%s\n' "$1"
-		printf '%s\n' "$1" >&2
 		shift
 	done
 } | while read -r PAGE; do
