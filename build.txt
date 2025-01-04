@@ -5,6 +5,12 @@ txt2html() {
 	# cut off the modeline and title
 	tail -n +3 |
 
+	# convert codeblocks into css-ified codeblocks
+	sed 's|```{|<pre id=c>|' |
+	sed 's|}```|</pre>|' |
+	# convert inline codeblocks into css-ified codeblocks
+	sed 's|`{|<span id=c>|g' |
+	sed 's|}`|</span>|g' |
 	# convert plaintext links into html
 	sed "s|\([^\"\'\>=]\)\(http[s]\{0,1\}://[^ ]*\)\([,.]\)|\1<a href=\2>\2</a>\3|g" |
 	sed "s|\([^\"\'\>=]\)\(http[s]\{0,1\}://[^ ]*\)|\1<a href=\2>\2</a>|g" |
