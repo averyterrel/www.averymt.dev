@@ -5,6 +5,9 @@ txt2html() {
 	# cut off the modeline and title
 	tail -n +3 |
 
+	# convert <,> to HTML-compatible format
+	sed 's|<|\&lt;|g' |
+	sed 's|>|\&gt;|g' |
 	# convert codeblocks into css-ified codeblocks
 	sed 's|```{|<pre id=c>|' |
 	sed 's|}```|</pre>|' |
