@@ -8,6 +8,9 @@ txt2html() {
 	# convert <,> to HTML-compatible format
 	sed 's|<|\&lt;|g' |
 	sed 's|>|\&gt;|g' |
+	# convert italics to html
+	sed 's|\*{|<em>|g' |
+	sed 's|}\*|</em>|g' |
 	# convert codeblocks into css-ified codeblocks
 	sed 's|```{|<pre id=c>|' |
 	sed 's|}```|</pre>|' |
