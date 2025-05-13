@@ -12,27 +12,24 @@ txt2html() {
 	sed 's|\*{|<em>|g' |
 	sed 's|}\*|</em>|g' |
 	# convert codeblocks into css-ified codeblocks
-	sed 's|```{|<pre id=c>|' |
-	sed 's|}```|</pre>|' |
+	sed 's|``[`]{|<pre id=c>|' |
+	sed 's|}[`]``|</pre>|' |
 	# convert inline codeblocks into css-ified codeblocks
-	sed 's|`{|<span id=c>|g' |
-	sed 's|}`|</span>|g' |
-	# convert plaintext links into html
-	sed "s|\([^\"\'\>=]\)\(http[s]\{0,1\}://[^ ]*\)\([,.]\)|\1<a href=\2>\2</a>\3|g" |
-	sed "s|\([^\"\'\>=]\)\(http[s]\{0,1\}://[^ ]*\)|\1<a href=\2>\2</a>|g" |
-	sed 's|\(http[s]\{0,1\}://[^ ]*\)\([,.]\)|<a href=\1>\1</a>\2|g' |
-	sed 's|\(http[s]\{0,1\}://[^ ]*\)|<a href=\1>\1</a>|g' |
+	sed 's|`[{]|<span id=c>|g' |
+	sed 's|[}]`|</span>|g' |
 	# convert `$/url` to html links relative to root domain
-	sed 's|\(\$/\)\([^ \)]*\)\([,.]\)|<a href=/\2>\1\2</a>\3|g' |
-	sed 's|\(\$/\)\([^ \)<>]*\)|<a href=/\2>\1\2</a>|g' |
+	sed 's|\([$]/\)\([^ \)]*\)\([,.]\)|<a href=/\2>\1\2</a>\3|g' |
+	sed 's|\([$]/\)\([^ \)<>]*\)|<a href=/\2>\1\2</a>|g' |
 	# convert `#/url` to html links
-	sed 's|\(#/\)\([^ )]*\)\([,.)]\)|<a href=\2>\1\2</a>\3|g' |
-	sed 's|\(#/\)\([^ )<>]*\)|<a href=\2>\1\2</a>|g' |
+	sed 's|\([#]/\)\([^ )]*\)\([,.)]\)|<a href=\2>\1\2</a>\3|g' |
+	sed 's|\([#]/\)\([^ )<>]*\)|<a href=\2>\1\2</a>|g' |
+	# convert lines starting with `##` to comments
+	sed 's|^\(##.*\)$|<span id=d>\1</span>|' |
 
 	# convert `-[0-9]` into IDs
-	sed 's|^\([ -]*\)\[\([0-9\.]*\)\]|\1<span id=\2>[\2]</span>|g' |
+	sed 's|^\([ -]*\)\[\([0-9.][0-9.]*\)\]|\1<span id=\2>[\2]</span>|g' |
 	# convert `[0-9]` into references to IDs
-	sed 's|\([^\"#]\)\[\([0-9\.]*\)\]|\1[<a href=#\2>\2</a>]|g' |
+	sed 's|\([^\"#]\)\[\([0-9.][0-9.]*\)\]|\1[<a href=#\2>\2</a>]|g' |
 
 	# set content
 	sed '/%%CONTENT%%/r /dev/stdin' template_html |
