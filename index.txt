@@ -1,3 +1,6 @@
-vim: set spell spelllang=en_us colorcolumn=81:hi ColorColumn ctermbg=224
+vim: set spell spelllang=en_us colorcolumn=81:hi ColorColumn ctermbg=224:
 Homepage
-asdf
+Hi! Welcome to my corner of the internet. I'm Avery, a transfem nerd interested
+in compiler design, systems administration, and all sorts of old Unix systems.
+I'll probably occasionally talk about rollerblading, legos, or space. Check out
+$/posts/ for what I've yapped about, or $/projects/ for what I'm working on.
