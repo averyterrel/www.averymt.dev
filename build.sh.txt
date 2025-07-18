@@ -17,12 +17,15 @@ txt2html() {
 	# convert inline codeblocks into css-ified codeblocks
 	sed 's|`[{]|<span id=c>|g' |
 	sed 's|[}]`|</span>|g' |
+	# See next comment. $/url.txt -> url.html
+	sed 's|\([$]/\)\([^ \)]*\).txt\([,.]\)|<a href=/\2.html>\1\2</a>\3|g' |
+	sed 's|\([$]/\)\([^ \)<>]*\).txt|<a href=/\2.html>\1\2</a>|g' |
 	# convert `$/url` to html links relative to root domain
-	sed 's|\([$]/\)\([^ \)]*\)\([,.]\)|<a href=/\2>\1\2</a>\3|g' |
-	sed 's|\([$]/\)\([^ \)<>]*\)|<a href=/\2>\1\2</a>|g' |
+	#sed 's|\([$]/\)\([^ \)]*\)\([,.]\)|<a href=/\2>\1\2</a>\3|g' |
+	sed 's!^\([$]/\)\([^ \)<>]*\)!<a href=/\2>\1\2</a>!g;s!\([^>]\)\([$]/\)\([^ \)<>]*\)!\1<a href=/\3>\2\3</a>!g' |
 	# convert `#/url` to html links
-	sed 's|\([#]/\)\([^ )]*\)\([,.)]\)|<a href=\2>\1\2</a>\3|g' |
-	sed 's|\([#]/\)\([^ )<>]*\)|<a href=\2>\1\2</a>|g' |
+	sed 's|\([#]/\)\([^ )]*\)\([,.)]\)|<a href=//\2>\1\2</a>\3|g' |
+	sed 's|\([#]/\)\([^ )<>]*\)|<a href=//\2>\1\2</a>|g' |
 	# convert lines starting with `##` to comments
 	sed 's|^\(##.*\)$|<span id=d>\1</span>|' |
 
@@ -32,14 +35,14 @@ txt2html() {
 	sed 's|\([^\"#]\)\[\([0-9.][0-9.]*\)\]|\1[<a href=#\2>\2</a>]|g' |
 
 	# set content
-	sed '/%%CONTENT%%/r /dev/stdin' template_html |
+	sed '/%%CONTENT%%/r /dev/stdin' html_template |
 	sed '/%%CONTENT%%/d' |
 	# set title
 	sed "s|%%TITLE%%|${1:-Index}|"
 }
 {
 	# process arguments if available, else all *.txt
-	[ $# -eq 0 ] && find . -name '*.txt'
+	[ $# -eq 0 ] && find . -name '*.txt' | grep -ve 'robots.txt$' | tee /dev/stderr
 	while [ ! $# -eq 0 ]; do
 		case "$1" in
 			sitemap*)
@@ -51,14 +54,14 @@ txt2html() {
 		shift
 	done
 } | while read -r PAGE; do
-	title=$(sed '2p;d' -- "$PAGE")
+	title=$(sed '2p;d' "$PAGE")
 	printf 'txt2html %s\n' "$title"
 	txt2html "$title" < "$PAGE" > "${PAGE%%.txt}.html"
 done
 printf 'txt2html Sitemap\n'
 find . -name '*.html' | cut -d/ -f2- | grep -v ^sitemap.html\$ | while read -r PAGE; do
-	printf '<a href=/%s>$/%s</a>\n' "$PAGE" "$(sed '2p;d' -- "${PAGE%%.html}.txt")"
+	printf '<a href=/%s>$/%s</a>\n' "$PAGE" "$(sed '2p;d' "${PAGE%%.html}.txt")"
 done |
-	sed '/%%CONTENT%%/r /dev/stdin' template_html |
+	sed '/%%CONTENT%%/r /dev/stdin' html_template |
 	sed '/%%CONTENT%%/d' |
 	sed 's|%%TITLE%%|Sitemap|' > sitemap.html
