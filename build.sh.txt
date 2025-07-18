@@ -57,6 +57,7 @@ txt2html() {
 	title=$(sed '2p;d' "$PAGE")
 	printf 'txt2html %s\n' "$title"
 	txt2html "$title" < "$PAGE" > "${PAGE%%.txt}.html"
+	gzip -9kf "${PAGE%%.txt}.html"
 done
 printf 'txt2html Sitemap\n'
 find . -name '*.html' | cut -d/ -f2- | grep -v ^sitemap.html\$ | while read -r PAGE; do
