@@ -5,6 +5,8 @@ txt2html() {
 	# cut off the modeline and title
 	tail -n +3 |
 
+	# convert lines starting with `##` to comments
+	sed 's|^\(##.*\)$|<span id=d>\1</span>|' |
 	# convert <,> to HTML-compatible format
 	sed 's|<|\&lt;|g' |
 	sed 's|>|\&gt;|g' |
@@ -17,17 +19,20 @@ txt2html() {
 	# convert inline codeblocks into css-ified codeblocks
 	sed 's|`[{]|<span id=c>|g' |
 	sed 's|[}]`|</span>|g' |
-	# See next comment. $/url.txt -> url.html
+	# See next comment. $/url.txt -> /url.html
 	sed 's|\([$]/\)\([^ \)]*\)[.]txt\([,.]\)|<a href=/\2.html>\1\2</a>\3|g' |
 	sed 's|\([$]/\)\([^ \)<>]*\)[.]txt|<a href=/\2.html>\1\2</a>|g' |
 	# convert `$/url` to html links relative to root domain
 	#sed 's|\([$]/\)\([^ \)]*\)\([,.]\)|<a href=/\2>\1\2</a>\3|g' |
 	sed 's!^\([$]/\)\([^ \)<>]*\)!<a href=/\2>\1\2</a>!g;s!\([^>]\)\([$]/\)\([^ \)<>]*\)!\1<a href=/\3>\2\3</a>!g' |
+	# See next comment. %/url.txt -> url.html
+	sed 's|\(%/\)\([^ \)]*\)[.]txt\([,.]\)|<a href=\2.html>\1\2</a>\3|g' |
+	sed 's|\(%/\)\([^ \)<>]*\)[.]txt|<a href=\2.html>\1\2</a>|g' |
+	# convert `%/url` to html links relative to current directory
+	sed 's!^\(%/\)\([^ \)<>]*\)!<a href=\2>\1\2</a>!g;s!\([^>]\)\(%/\)\([^ \)<>]*\)!\1<a href=\3>\2\3</a>!g' |
 	# convert `#/url` to html links
 	sed 's|\([#]/\)\([^ )]*\)\([,.)]\)|<a href=//\2>\1\2</a>\3|g' |
 	sed 's|\([#]/\)\([^ )<>]*\)|<a href=//\2>\1\2</a>|g' |
-	# convert lines starting with `##` to comments
-	sed 's|^\(##.*\)$|<span id=d>\1</span>|' |
 
 	# convert `-[0-9]` into IDs
 	sed 's|^\([ -]*\)\[\([0-9.][0-9.]*\)\]|\1<span id=\2>[\2]</span>|g' |
