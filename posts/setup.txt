@@ -1,0 +1,227 @@
+vim: set spell spelllang=en_us colorcolumn=81:hi ColorColumn ctermbg=224
+Server setup
+- Preface ................................................................ [000]
+- Website building script ................................................ [001]
+- Basic configuration .................................................... [002]
+- HTTP server ............................................................ [003]
+- Relayd setup ........................................................... [004]
+
+[000] Preface ------------------------------------------------------------------
+For the hosting provider, I chose RackNerd. They're incredibly cheap ($40/yr!)
+and I've had good experience with them in the past. I can't really claim to be a
+BSD expert, so you shouldn't take my word as gospel, but it should get you
+started. This is a re-creation of my previous setup, now on a slightly more
+powerful server. I chose OpenBSD because of the great networking with `{pf(4)}`,
+and the phenomenal man-pages, among many others. There are too many reasons to
+list, but I think that many of them are summarized well at
+#/why-openbsd.rocks/fact/.
+
+[001] Setting up the website building script -----------------------------------
+I originally ripped some of the regular expressions from
+#/github.com/kisslinux/kisslinux.github.io, but I've since rewritten it almost
+entirely and reformatted all of the `{sed}` expressions to work with BRE instead
+of ERE. I also don't expect to host KISS packages so I entirely removed
+`{pkg()}`. I've considered converting it to a POSIX Makefile, but I may keep it
+as a KSH script so that I can use automatic file discovery.
+It's available for (somewhat ugly) viewing at $/build.sh.txt.
+
+[002] Basic configuration ------------------------------------------------------
+I prefer the `{fish}` shell and `{vim}`, so ```{
+pkg_add fish vim--no_x11-perl-python3-ruby htop
+cp /etc/examples/{doas,man}.conf /etc/
+echo manpath /usr/local/share/fish/man/ >> /etc/man.conf
+for i in ruby bundle bundler erb gem irb racc rake rbs rdbg rdoc ri suggest
+typeprof; do
+	ln -sf /usr/local/bin/${i}33 /usr/local/bin/$i
+done
+chsh -s /usr/local/bin/fish root
+}```
+If you didn't enable it during installation, configure and enable `{sshd(8)}`
+now: ```{
+vim /etc/ssh/sshd_config
+rcctl enable sshd
+rcctl start sshd
+}```
+If you're getting certificates via ACME HTTP-01 (like for use below with
+`{relayd(8)}`, setup the config file. Remember to renew them every so often, or
+set cron to do it automatically! If you get certificate errors on some systems,
+you may need to use the fullchain certificate instead of the default leaf-only
+cert.
+```{
+cp /etc/examples/acme-client.conf /etc/acme-client.conf
+vim /etc/acme-client.conf
+acme-client averymt.dev
+}```
+
+[003] HTTP server --------------------------------------------------------------
+I'm using the built-in OpenBSD `{httpd(8)}`, which I use for managing HTTPS
+redirects and serving static content. All content is served on different
+loopback addresses. The port httpd listens on is the same as the originating
+port on the reverse proxy. Everything is relative to `{/var/www}`.
+ACME is served on 127.0.0.1, and only on HTTP:
+```{
+server "*" {
+	listen on 127.0.0.1 port 80
+	
+	location "/.well-known/acme-challenge/*" {
+		root "/acme"
+	}
+	location * {
+		block return 403
+	}
+}
+}```
+WWW is served on 127.0.0.2, both HTTP and HTTPS, with access to the git
+directory denied and gzip'd files served if they're found:
+```{
+server "www.averymt.dev" {
+	listen on 127.0.0.2 port 80
+	listen on 127.0.0.2 port 443
+	root "/www_averymt_dev"
+	gzip-static
+	
+	location "/.git/*" {
+		block return 403
+	}
+	location * {
+		directory auto index
+	}
+}
+}```
+Redirect `{averymt.dev}` to `{www.averymt.dev}`, keeping the correct HTTP/S
+status:
+```{
+server "averymt.dev" {
+	listen on 127.0.0.2 port 80
+	root "/empty"
+	
+	location * {
+		block return 302 "http://www.averymt.dev$REQUEST_URI"
+	}
+}
+server "averymt.dev" {
+	listen on 127.0.0.2 port 443
+	root "/empty"
+	
+	location * {
+		block return 302 "https://www.averymt.dev$REQUEST_URI"
+	}
+}
+}```
+And finally, force Vaultwarden to be HTTPS. It listens on 127.0.0.16, so this
+does too:
+```{
+server "vaultwarden.averymt.dev" {
+	listen on 127.0.0.16 port 80
+	root "/empty"
+	
+	location * {
+		block return 302 "https://vaultwarden.averymt.dev$REQUEST_URI"
+	}
+}
+}```
+
+[004] Relayd setup -------------------------------------------------------------
+This `{relayd(8)}` config is complementary to the above `{httpd(8)}`, and so
+will be structured very similarly.
+First I declare the addresses of different services. A `{table}` is used for
+relay selection. There can be more than one host in a table for load balancing
+or redundancy, but here I just use one.
+```{
+table <acme>		{ 127.0.0.1  }
+table <averymt_dev>	{ 127.0.0.2  }
+table <vaultwarden>	{ 127.0.0.16 }
+}```
+Then I declare the listening addresses for IPv4 , and enable creating a log
+entry for each connection. IPv6 is available with RackNerd in select DCs, but
+unfortunately I wasn't able to configure it correctly. I have a feeling it's
+user error so if I take another crack at it, I'll be sure to write a post and
+link it here.
+```{
+ext4_addr="142.171.124.60"
+log connection
+}```
+Here we redirect ACME HTTP-01 challenges to the correct server, redirect
+Vaultwarden requests to HTTPS, and pass along anything else for averymt.dev to
+`{httpd(8)}`. Anything else is met with a 403 error.
+```{
+http protocol "www" {
+	match request header set "X-Forwarded-For" value "$REMOTE_ADDR"
+	match request header set "X-Forwarded-By" value "$SERVER_ADDR:$SERVER_PORT"
+	match response header set "Content-Security-Policy" value "default-src 'self'"
+	match response header set "X-Frame-Options" value "DENY"
+	match response header set "X-Content-Type-Options" value "nosniff"
+	match response header set "Referrer-Policy" value "no-referrer"
+	match response header set "Feature-Policy" value "accelerometer 'none';autoplay 'none';camera 'none';display-capture 'none';encrypted-media 'none';fullscreen 'none';geolocation 'none';gyroscope 'none';hid 'none';idle-detection 'none';magnetometer 'none';microphone 'none';midi 'none';payment 'none';picture-in-picture 'none';publickey-credentials-get 'none';screen-wake-lock 'none';serial 'none';sync-xhr 'none';usb 'none';web-share 'none';xr-spatial-tracking 'none';clipboard-read 'none';clipboard-write 'none';gamepad 'none'"
+	match response header set "Permissions-Policy" value "accelerometer=(),autoplay=(),camera=(),display-capture=(),encrypted-media=(),fullscreen=(),geolocation=(),gyroscope=(),hid=(),idle-detection=(),magnetometer=(),microphone=(),midi=(),payment=(),picture-in-picture=(),publickey-credentials-get=(),screen-wake-lock=(),serial=(),sync-xhr=(),usb=(),web-share=(),xr-spatial-tracking=(),clipboard-read=(),clipboard-write=(),gamepad=()"
+	
+	# handle acme requests
+	pass request quick path "/.well-known/acme-challenge/*" \
+		forward to <acme>
+	
+	# https redirects
+	pass request quick header "Host" value "vaultwarden.averymt.dev" \
+		forward to <averymt_dev>
+	
+	# true httpd requests
+	pass request quick header "Host" value "averymt.dev" \
+		forward to <averymt_dev>
+	pass request quick header "Host" value "*.averymt.dev" \
+		forward to <averymt_dev>
+	
+	# catch all
+	block request quick
+	return error
+}
+relay "wwwproxy" {
+	listen on $ext_addr port 80
+	protocol www
+	
+	forward to <acme> port 80
+	forward to <averymt_dev> port 80
+}
+}```
+Here we tell it to use `{/etc/ssl/private/{wild.,}averymt.dev.key}` and
+`{/etc/ssl/{wild.,}averymt.dev.crt}` for TLS, enable passing websocket data,
+forward Vaultwarden requests to the server (on the default port 8000), and
+forward all other requests for averymt.dev to `{httpd(8)}`. Like for HTTP,
+anything else gets a 403.
+```{
+http protocol "wwwtls" {
+	tls keypair "wild.averymt.dev"
+	tls keypair "averymt.dev"
+	match request header set "X-Forwarded-For" value "$REMOTE_ADDR"
+	match request header set "X-Forwarded-By" value "$SERVER_ADDR:$SERVER_PORT"
+	match response header remove "Server"
+	match response header set "Content-Security-Policy" value "default-src 'self'"
+	match response header set "X-Frame-Options" value "DENY"
+	match response header set "X-Content-Type-Options" value "nosniff"
+	match response header set "Referrer-Policy" value "no-referrer"
+	match response header set "Feature-Policy" value "accelerometer 'none';autoplay 'none';camera 'none';display-capture 'none';encrypted-media 'none';fullscreen 'none';geolocation 'none';gyroscope 'none';hid 'none';idle-detection 'none';magnetometer 'none';microphone 'none';midi 'none';payment 'none';picture-in-picture 'none';publickey-credentials-get 'none';screen-wake-lock 'none';serial 'none';sync-xhr 'none';usb 'none';web-share 'none';xr-spatial-tracking 'none';clipboard-read 'none';clipboard-write 'none';gamepad 'none'"
+	match response header set "Permissions-Policy" value "accelerometer=(),autoplay=(),camera=(),display-capture=(),encrypted-media=(),fullscreen=(),geolocation=(),gyroscope=(),hid=(),idle-detection=(),magnetometer=(),microphone=(),midi=(),payment=(),picture-in-picture=(),publickey-credentials-get=(),screen-wake-lock=(),serial=(),sync-xhr=(),usb=(),web-share=(),xr-spatial-tracking=(),clipboard-read=(),clipboard-write=(),gamepad=()"
+
+	http websockets
+
+	pass request quick header "Host" value "vaultwarden.averymt.dev" \
+		forward to <vaultwarden>
+	# true httpd requests
+	pass request quick header "Host" value "averymt.dev" \
+		forward to <averymt_dev>
+	pass request quick header "Host" value "*.averymt.dev" \
+		forward to <averymt_dev>
+
+	# catch all
+	block request quick
+	return error
+}
+relay "wwwtlsproxy" {
+	listen on $ext_addr port 443 tls
+	protocol wwwtls
+
+	forward to <averymt_dev> port 443
+	forward to <vaultwarden> port 8000
+}
+}```
+Pretty easy, huh?
+
+Partially written on 1/1/2025, edited and published 19/7/2025 01:00 UTC-6.
