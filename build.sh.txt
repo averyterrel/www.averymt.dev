@@ -15,8 +15,8 @@ txt2html() {
 	sed 's|``[`]{|<pre id=c>|' |
 	sed 's|}[`]``|</pre>|' |
 	# convert inline codeblocks into css-ified codeblocks
-	sed 's|`[{]|<span id=c>|g' |
-	sed 's|[}]`|</span>|g' |
+	sed 's|`[{]|<pre id=c>|g' |
+	sed 's|[}]`|</pre>|g' |
 	# See next comment. $/url.txt -> url.html
 	sed 's|\([$]/\)\([^ \)]*\).txt\([,.]\)|<a href=/\2.html>\1\2</a>\3|g' |
 	sed 's|\([$]/\)\([^ \)<>]*\).txt|<a href=/\2.html>\1\2</a>|g' |
