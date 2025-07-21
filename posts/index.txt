@@ -1,6 +1,7 @@
 vim: set spell spelllang=en_us colorcolumn=81:hi ColorColumn ctermbg=224
 Posts - Avery's Blog
-%/setup.txt - Setting up a basic OpenBSD server, with HTTP/S and multihoming.
+%/setup-190725.txt - 19/7/2025 - Setting up a basic OpenBSD server, with HTTP/S
+and multihoming.
 More coming soon...
 
-Last updated 19/7/2025 01:00 UTC-6
+Last updated 21/7/2025 05:00 UTC-6
